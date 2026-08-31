@@ -285,27 +285,57 @@ carries no secret and reaches no network on the default `mock` model.
 
 ### Deploy
 
-Both paths build the repo Dockerfile, so there is no database to provision, no
-volume to attach and no migration to run.
+Every path below builds the repo Dockerfile. The warehouse is baked into the
+image, so there is no database to provision, no volume to attach and no
+migration to run, and the default `mock` model reaches no network.
 
-**Fly.io** (`fly.toml` is in the repo, configured to scale to zero when idle):
-
-```bash
-fly auth login
-fly launch --copy-config --no-deploy    # first time only, to pick a free app name
-fly deploy
-```
-
-**Render**, if you would rather not install a CLI: on render.com choose
-**New -> Blueprint**, point it at this repository and apply. `render.yaml`
-declares the service, the `/health` check and the environment.
-
-To run a hosted model on the deployed instance, set the key as a secret rather
-than an environment variable:
+**Hugging Face Spaces** (free, no card, and the most generous of the three):
+create a Space at [huggingface.co/new-space](https://huggingface.co/new-space)
+with SDK **Docker** and the free CPU basic hardware, then:
 
 ```bash
-fly secrets set VANTAGE_MODEL=gemini GEMINI_API_KEY=...
+./deploy/huggingface/push.sh <your-hf-username> vantage
 ```
+
+The script stages a Space-shaped copy of the repo (the Space needs YAML
+frontmatter in its `README.md`, which GitHub would render as a stray table) and
+pushes it. Git prompts for your credentials directly; the script stores nothing.
+
+**Render** (free, no card, no CLI at all): choose **New -> Blueprint** on
+[render.com](https://render.com), point it at this repository and apply.
+`render.yaml` declares the service, the `/health` check and the environment.
+Free instances sleep after 15 minutes idle and take roughly 30 to 50 seconds to
+wake.
+
+**Fly.io** (`fly.toml` is committed, configured to scale to zero when idle).
+Note that Fly now requires a payment method even within the free allowance:
+
+```bash
+fly auth login && fly deploy
+```
+
+To run a hosted model on a deployed instance, set the key as a secret rather
+than a plain environment variable:
+
+```bash
+fly secrets set VANTAGE_MODEL=gemini GEMINI_API_KEY=...   # or the host's secrets UI
+```
+
+### Footprint
+
+| | |
+| --- | ---: |
+| Image | 472 MB |
+| Resident memory under load | 156 MB |
+| Runs inside a 512 MB cap | yes |
+| Cold start | process start, not a data load |
+
+The image was 945 MB until the TF-IDF index stopped importing scikit-learn.
+Vectorising ten table documents does not need scipy, numpy and pandas, so
+`retrieval/tfidf.py` now computes the same weighting in about forty lines of
+standard library. The replacement was checked against the scikit-learn output it
+replaces before the dependency was removed: identical 1,432-term vocabulary,
+maximum score difference 1.7e-16, no ranking changes.
 
 ---
 

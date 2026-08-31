@@ -27,8 +27,9 @@ RUN pip install --no-deps -e .
 # Deterministic 258,000-row warehouse, baked into the image.
 RUN python -m vantage.warehouse.generate --out /app/data/warehouse.db
 
-# Run as a non-root user; the database is mounted read-only at runtime anyway.
-RUN useradd --create-home --uid 10001 vantage \
+# Non-root. UID 1000 specifically, because Hugging Face Spaces runs containers
+# as that user and anything else hits permission errors on the log directory.
+RUN useradd --create-home --uid 1000 vantage \
     && mkdir -p /app/logs \
     && chown -R vantage:vantage /app
 USER vantage
