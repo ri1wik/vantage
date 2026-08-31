@@ -9,7 +9,9 @@
 #   fly deploy
 
 app = "vantage-analyst"
-primary_region = "iad"
+# Mumbai: closest region to the author, and the app is stateless so it can be
+# moved or replicated with `fly regions set` without touching the data.
+primary_region = "bom"
 
 [build]
   dockerfile = "Dockerfile"
