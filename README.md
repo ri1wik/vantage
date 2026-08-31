@@ -276,7 +276,32 @@ docker compose --profile bench run bench    # score the suite, write the report
 ```
 
 The warehouse is generated at image build time, so the container runs offline and
-its data is byte-identical to the one the benchmark was scored on.
+its data is byte-identical to the one the benchmark was scored on. The image
+carries no secret and reaches no network on the default `mock` model.
+
+### Deploy
+
+Both paths build the repo Dockerfile, so there is no database to provision, no
+volume to attach and no migration to run.
+
+**Fly.io** (`fly.toml` is in the repo, configured to scale to zero when idle):
+
+```bash
+fly auth login
+fly launch --copy-config --no-deploy    # first time only, to pick a free app name
+fly deploy
+```
+
+**Render**, if you would rather not install a CLI: on render.com choose
+**New -> Blueprint**, point it at this repository and apply. `render.yaml`
+declares the service, the `/health` check and the environment.
+
+To run a hosted model on the deployed instance, set the key as a secret rather
+than an environment variable:
+
+```bash
+fly secrets set VANTAGE_MODEL=gemini GEMINI_API_KEY=...
+```
 
 ---
 

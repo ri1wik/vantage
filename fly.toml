@@ -1,0 +1,48 @@
+# Fly.io deployment for Vantage.
+#
+# The image is built from the repo Dockerfile, which bakes in the deterministic
+# 258,000-row warehouse, so the deployed instance answers identically to a local
+# run and needs no volume, no managed database and no network egress.
+#
+#   fly auth login
+#   fly launch --copy-config --no-deploy    # first time only, picks the app name
+#   fly deploy
+
+app = "vantage-analyst"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  VANTAGE_MODEL = "mock"
+  VANTAGE_DB = "/app/data/warehouse.db"
+  VANTAGE_LOG_DIR = "/app/logs"
+  VANTAGE_MAX_ATTEMPTS = "3"
+  VANTAGE_ROW_LIMIT = "500"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  # Scale to zero when idle. The warehouse is in the image, so a cold start is a
+  # process start rather than a data load.
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 20
+    hard_limit = 40
+
+  [[http_service.checks]]
+    grace_period = "15s"
+    interval = "30s"
+    method = "GET"
+    path = "/health"
+    protocol = "http"
+    timeout = "5s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

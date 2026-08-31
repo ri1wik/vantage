@@ -1,0 +1,24 @@
+# Render blueprint for Vantage. No CLI needed: on render.com choose
+# New -> Blueprint, point it at github.com/ri1wik/vantage, and apply.
+#
+# The Dockerfile bakes in the 258,000-row warehouse, so there is no database to
+# provision and no disk to attach.
+
+services:
+  - type: web
+    name: vantage
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: VANTAGE_MODEL
+        value: mock
+      - key: VANTAGE_DB
+        value: /app/data/warehouse.db
+      - key: VANTAGE_LOG_DIR
+        value: /app/logs
+      - key: VANTAGE_MAX_ATTEMPTS
+        value: "3"
+      - key: VANTAGE_ROW_LIMIT
+        value: "500"
