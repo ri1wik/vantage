@@ -29,7 +29,7 @@ jobs:
       - name: Build the warehouse
         run: python -m vantage.warehouse.generate --out data/warehouse.db
       - name: Test suite
-        run: pytest -q --cov=vantage --cov-report=term-missing
+        run: python -m pytest -q --cov=vantage --cov-report=term-missing
 
   bench:
     name: vantage-bench (deterministic baseline)
