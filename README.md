@@ -1,5 +1,9 @@
 # Vantage
 
+[![ci](https://github.com/ri1wik/vantage/actions/workflows/ci.yml/badge.svg)](https://github.com/ri1wik/vantage/actions/workflows/ci.yml)
+[![python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue)](https://www.python.org/)
+[![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 **A self-correcting multi-agent data analyst.** Vantage turns a plain-English
 question into AST-guarded, read-only SQL over a 258,000-row warehouse, repairs
 its own failed queries inside a bounded loop, and refuses to state a number it
