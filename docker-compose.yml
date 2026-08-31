@@ -1,0 +1,31 @@
+services:
+  api:
+    build: .
+    image: vantage:latest
+    ports: ["8000:8000"]
+    environment:
+      VANTAGE_MODEL: ${VANTAGE_MODEL:-mock}
+      VANTAGE_MAX_ATTEMPTS: ${VANTAGE_MAX_ATTEMPTS:-3}
+      # Only needed when VANTAGE_MODEL names a hosted provider.
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    volumes:
+      - ./logs:/app/logs
+
+  # One-shot: score the benchmark and write the report next to the source.
+  bench:
+    build: .
+    image: vantage:latest
+    profiles: ["bench"]
+    command: ["python", "-m", "bench.runner", "--model", "mock", "--out", "/app/bench/results"]
+    volumes:
+      - ./bench/results:/app/bench/results
+
+  # One-shot: the MCP server over stdio, for an agent host to attach to.
+  mcp:
+    build: .
+    image: vantage:latest
+    profiles: ["mcp"]
+    command: ["python", "-m", "vantage.mcp_server"]
+    stdin_open: true

@@ -1,0 +1,140 @@
+# Curated business glossary layered on top of live schema introspection.
+# The schema linker searches these strings; the SQL writer sees the descriptions
+# as inline comments. Keep synonyms in the vocabulary analysts actually use.
+
+categories:
+  description: "Product taxonomy. One row per merchandising category, grouped into departments."
+  grain: "one row per category"
+  synonyms: ["category", "categories", "taxonomy", "department", "product type", "product line"]
+  columns:
+    category_id:   {description: "Surrogate key."}
+    category_name: {description: "Category label such as Headphones or Cookware.", synonyms: ["category", "category label"]}
+    department:    {description: "Parent department the category rolls up to.", synonyms: ["department", "business unit", "division"]}
+    is_perishable: {description: "1 when the category holds perishable goods.", synonyms: ["perishable", "fresh"]}
+
+suppliers:
+  description: "Vendors that supply products, with sourcing lead time and quality rating."
+  grain: "one row per supplier"
+  synonyms: ["supplier", "vendor", "manufacturer", "sourcing", "procurement"]
+  columns:
+    supplier_id:    {description: "Surrogate key."}
+    supplier_name:  {description: "Legal supplier name.", synonyms: ["vendor name", "supplier"]}
+    country:        {description: "Supplier country of origin.", synonyms: ["sourcing country"]}
+    region:         {description: "Supplier sales region."}
+    lead_time_days: {description: "Days between purchase order and receipt.", synonyms: ["lead time", "replenishment time"]}
+    rating:         {description: "Supplier quality score from 2.5 to 5.0.", synonyms: ["supplier score", "quality rating"]}
+
+stores:
+  description: "Physical and virtual selling locations that orders are attributed to."
+  grain: "one row per store"
+  synonyms: ["store", "shop", "location", "branch", "site", "outlet"]
+  columns:
+    store_id:    {description: "Surrogate key."}
+    store_name:  {description: "Store display name."}
+    city:        {description: "Store city.", synonyms: ["city", "metro"]}
+    state:       {description: "Store state or province code."}
+    country:     {description: "Store country."}
+    region:      {description: "Store sales region such as APAC or Europe.", synonyms: ["region", "territory", "geo"]}
+    opened_date: {description: "Date the store opened.", synonyms: ["opening date"]}
+    store_type:  {description: "One of flagship, outlet, popup or warehouse.", synonyms: ["format", "store format"]}
+
+products:
+  description: "Sellable catalog items with cost and list price, mapped to a category and supplier."
+  grain: "one row per product SKU"
+  synonyms: ["product", "item", "sku", "catalog", "merchandise", "goods"]
+  columns:
+    product_id:   {description: "Surrogate key."}
+    sku:          {description: "Stock keeping unit code.", synonyms: ["sku", "item code"]}
+    product_name: {description: "Product display name.", synonyms: ["product", "item name"]}
+    category_id:  {description: "Category the product belongs to."}
+    supplier_id:  {description: "Supplier that provides the product."}
+    unit_cost:    {description: "Landed cost per unit, the basis for margin.", synonyms: ["cost", "cogs", "cost of goods"]}
+    list_price:   {description: "Catalog list price before discounts.", synonyms: ["price", "list price", "msrp"]}
+    launch_date:  {description: "Date the product went on sale."}
+    is_active:    {description: "1 when the product is still sellable.", synonyms: ["active", "discontinued"]}
+
+customers:
+  description: "Registered buyers with geography, segment and loyalty tier."
+  grain: "one row per customer"
+  synonyms: ["customer", "buyer", "account", "shopper", "client", "user"]
+  columns:
+    customer_id:  {description: "Surrogate key."}
+    first_name:   {description: "Given name. Personally identifying."}
+    last_name:    {description: "Family name. Personally identifying."}
+    email:        {description: "Contact email address. Personally identifying, never aggregate or export."}
+    signup_date:  {description: "Date the customer registered.", synonyms: ["signup", "registration date", "cohort"]}
+    country:      {description: "Customer billing country."}
+    region:       {description: "Customer region such as APAC or LATAM.", synonyms: ["region", "geo", "territory"]}
+    city:         {description: "Customer city."}
+    segment:      {description: "One of Consumer, SMB or Enterprise.", synonyms: ["segment", "customer segment"]}
+    loyalty_tier: {description: "One of Bronze, Silver, Gold or Platinum.", synonyms: ["loyalty", "tier", "membership", "status"]}
+    is_active:    {description: "1 when the customer account is active.", synonyms: ["active", "churned"]}
+
+orders:
+  description: "Order headers. One row per placed order, with channel, status and fulfillment method."
+  grain: "one row per order"
+  synonyms: ["order", "purchase", "transaction", "basket", "checkout", "sales order"]
+  columns:
+    order_id:         {description: "Surrogate key."}
+    customer_id:      {description: "Customer who placed the order."}
+    store_id:         {description: "Store the order is attributed to."}
+    order_ts:         {description: "Order timestamp to the second."}
+    order_date:       {description: "Order date as YYYY-MM-DD, the standard time axis.", synonyms: ["date", "order date", "when", "month", "year"]}
+    channel:          {description: "One of web, mobile_app, in_store, phone or marketplace.", synonyms: ["channel", "sales channel", "source"]}
+    status:           {description: "One of completed, cancelled, pending or refunded.", synonyms: ["status", "order status", "state"]}
+    currency:         {description: "ISO currency the order was priced in.", synonyms: ["currency"]}
+    fulfillment_type: {description: "One of ship, pickup or digital.", synonyms: ["fulfillment", "delivery method"]}
+    promo_code:       {description: "Promotion code applied, NULL when none.", synonyms: ["promo", "coupon", "discount code", "campaign"]}
+
+order_items:
+  description: "Order line items. The revenue fact table. line_total is net revenue after discount."
+  grain: "one row per product line on an order"
+  synonyms: ["line item", "order line", "revenue", "sales", "gross sales", "net sales", "units", "quantity sold"]
+  columns:
+    order_item_id:   {description: "Surrogate key."}
+    order_id:        {description: "Order the line belongs to."}
+    product_id:      {description: "Product sold on the line."}
+    quantity:        {description: "Units sold on the line.", synonyms: ["units", "qty", "volume", "quantity"]}
+    unit_price:      {description: "Price charged per unit at sale time.", synonyms: ["selling price", "price paid"]}
+    discount_amount: {description: "Absolute discount applied to the line.", synonyms: ["discount", "markdown", "promotion value"]}
+    line_total:      {description: "Net revenue for the line: unit_price * quantity - discount_amount.", synonyms: ["revenue", "sales", "net revenue", "amount", "turnover", "gmv"]}
+
+payments:
+  description: "Payment attempts and captures against orders. Orders may be paid in several parts."
+  grain: "one row per payment attempt"
+  synonyms: ["payment", "tender", "settlement", "billing", "charge"]
+  columns:
+    payment_id: {description: "Surrogate key."}
+    order_id:   {description: "Order the payment settles."}
+    payment_ts: {description: "Timestamp the payment was attempted."}
+    method:     {description: "One of credit_card, debit_card, paypal, gift_card, bank_transfer or apple_pay.", synonyms: ["payment method", "tender type", "how they paid"]}
+    amount:     {description: "Amount tendered on this payment.", synonyms: ["paid amount", "tendered"]}
+    status:     {description: "One of captured, authorized, failed or refunded.", synonyms: ["payment status", "capture", "decline", "failure"]}
+    processor:  {description: "Payment gateway that handled the charge.", synonyms: ["gateway", "psp", "processor"]}
+
+shipments:
+  description: "Outbound shipments for orders, with carrier and delivery timestamps."
+  grain: "one row per shipment"
+  synonyms: ["shipment", "shipping", "delivery", "logistics", "dispatch", "parcel"]
+  columns:
+    shipment_id:         {description: "Surrogate key."}
+    order_id:            {description: "Order being shipped."}
+    carrier:             {description: "One of UPS, FedEx, DHL, USPS, Royal Mail or Blue Dart.", synonyms: ["carrier", "courier", "shipper"]}
+    shipped_ts:          {description: "Date the parcel left the warehouse.", synonyms: ["ship date", "dispatch date"]}
+    delivered_ts:        {description: "Delivery date, NULL until delivered.", synonyms: ["delivery date", "arrival", "delivered"]}
+    ship_cost:           {description: "Freight cost charged to the business.", synonyms: ["shipping cost", "freight"]}
+    status:              {description: "One of delivered, in_transit, lost or returned_to_sender.", synonyms: ["shipment status", "delivery status", "lost parcel"]}
+    destination_country: {description: "Country the parcel was sent to.", synonyms: ["destination", "ship to country"]}
+
+returns:
+  description: "Returned line items with reason codes and refunded value."
+  grain: "one row per returned line item"
+  synonyms: ["return", "refund", "rma", "returned goods", "reverse logistics"]
+  columns:
+    return_id:     {description: "Surrogate key."}
+    order_item_id: {description: "Order line that was returned."}
+    return_ts:     {description: "Timestamp the return was logged.", synonyms: ["return date"]}
+    reason:        {description: "One of damaged, wrong_item, no_longer_needed, size_issue, late_delivery or quality.", synonyms: ["return reason", "reason code", "why returned"]}
+    quantity:      {description: "Units returned, at most the units ordered.", synonyms: ["returned units", "return qty"]}
+    refund_amount: {description: "Value refunded to the customer.", synonyms: ["refund", "refunded value", "credit", "money back"]}
+    condition:     {description: "One of resellable, refurbish or scrap.", synonyms: ["condition", "disposition", "grade"]}

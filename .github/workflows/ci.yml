@@ -1,0 +1,94 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  VANTAGE_DB: data/warehouse.db
+  VANTAGE_MODEL: mock
+
+jobs:
+  test:
+    name: tests (py${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - run: pip install -r requirements.txt && pip install -e .
+      - name: Build the warehouse
+        run: python -m vantage.warehouse.generate --out data/warehouse.db
+      - name: Test suite
+        run: pytest -q --cov=vantage --cov-report=term-missing
+
+  bench:
+    name: vantage-bench (deterministic baseline)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - run: pip install -r requirements.txt && pip install -e .
+      - run: python -m vantage.warehouse.generate --out data/warehouse.db
+
+      # The baseline is the regression gate. It runs offline, so a red bench is
+      # a real change in behaviour rather than a flaky provider.
+      - name: Score the baseline
+        run: python -m bench.runner --model mock --out bench/results --fail-under 0.95 --quiet
+
+      # The control that keeps the gate honest: a do-nothing agent must fail
+      # every tier. If this ever passes a case, a tier has stopped measuring.
+      - name: Null-agent control must score zero
+        run: |
+          python -m bench.runner --model null --out bench/results-null --quiet
+          python - <<'PY'
+          import json, sys
+          summary = json.load(open("bench/results-null/results.json"))["summary"]
+          if summary["passed"] != 0:
+              sys.exit(f"null control passed {summary['passed']} case(s); a tier is not measuring anything")
+          print("null control scored 0/%d, as required" % summary["cases"])
+          PY
+
+      - name: Report
+        if: always()
+        run: cat bench/results/report.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bench-results
+          path: |
+            bench/results/
+            bench/results-null/
+
+  docker:
+    name: docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t vantage:ci .
+      - name: Smoke-test the image
+        run: |
+          docker run -d --name vantage-ci -p 8000:8000 vantage:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/health > /dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:8000/health
+          curl -fsS -X POST http://127.0.0.1:8000/ask \
+            -H 'content-type: application/json' \
+            -d '{"question":"Revenue by sales channel","include_rows":false}' \
+            | python -c "import json,sys; d=json.load(sys.stdin); assert d['status']=='answered', d; print('ask ok')"
+          docker rm -f vantage-ci
